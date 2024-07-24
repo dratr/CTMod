@@ -674,6 +674,7 @@ else -- if module:getGameVersion() >= 9 then
 	local dummySetText = CreateFrame("Frame"):CreateFontString(nil, "ARTWORK").SetText;	-- prevents an infinite loop by the hook below
 
 	-- we want to hook each font string as they are created
+--[[
 	hooksecurefunc(QuestScrollFrame.titleFramePool, "resetterFunc", function(__, obj)
 		if obj.ct == nil then
 			obj.ct = 1
@@ -685,7 +686,6 @@ else -- if module:getGameVersion() >= 9 then
 			end)
 		end
 	end)
-	
 	local info
 	hooksecurefunc(QUEST_TRACKER_MODULE, "GetBlock", function(__, id)
 		if type(id) == "string" then
@@ -711,6 +711,7 @@ else -- if module:getGameVersion() >= 9 then
 			end)
 		end
 	end)
+--]]	
 end
 
 --------------------------------------------

@@ -11,7 +11,7 @@
 
 local module = select(2, ...)
 
-local healthBar = PlayerFrameHealthBar or PlayerFrame.PlayerFrameContent.PlayerFrameContentMain.HealthBarArea.HealthBar
+local healthBar = PlayerFrameHealthBar or PlayerFrame.PlayerFrameContent.PlayerFrameContentMain.HealthBarsContainer.HealthBar
 local manaBar = PlayerFrameManaBar or PlayerFrame.PlayerFrameContent.PlayerFrameContentMain.ManaBarArea.ManaBar
 
 local function CT_PlayerFrame_HealthTextStatusBar_UpdateTextString(bar)

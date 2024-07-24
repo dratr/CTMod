@@ -136,9 +136,9 @@ local function setBuffSize(size)
 	for btn in buffPool:EnumerateActive() do
 		btn:SetSize(size, size)
 	end
-	for __, btn in buffPool:EnumerateInactive() do
-		btn:SetSize(size, size)
-	end	
+--	for __, btn in buffPool:EnumerateInactive() do
+--		btn:SetSize(size, size)
+--	end	
 end
 
 local function setDebuffSize(size)
@@ -147,10 +147,10 @@ local function setDebuffSize(size)
 		btn:SetSize(size, size)
 		btn.Border:SetSize(size+2, size+2)
 	end
-	for __, btn in debuffPool:EnumerateInactive() do
-		btn:SetSize(size, size)
-		btn.Border:SetSize(size+2, size+2)
-	end
+--	for __, btn in debuffPool:EnumerateInactive() do
+--		btn:SetSize(size, size)
+--		btn.Border:SetSize(size+2, size+2)
+--	end
 	
 	if (PetFrameDebuff1 and PetFrameDebuff2 and PetFrameDebuff3 and PetFrameDebuff4) then
 		PetFrameDebuff1:SetSize(size, size)
@@ -164,9 +164,9 @@ local function setDebuffBorder(show)
 	for btn in debuffPool:EnumerateActive() do
 		btn.Border:SetShown(show)
 	end
-	for __, btn in debuffPool:EnumerateInactive() do
-		btn.Border:SetShown(show)
-	end
+--	for __, btn in debuffPool:EnumerateInactive() do
+--		btn.Border:SetShown(show)
+--	end
 end
 
 
