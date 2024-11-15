@@ -604,29 +604,29 @@ function CT_AssistFrame_UpdateAuras(self)
 	local filter		-- intentionally nil
 
 	for i=1, MAX_TARGET_BUFFS do
-		name, icon, count, debuffType, duration, expirationTime, caster, canStealOrPurge, _ , spellId = UnitBuff(self.unit, i, filter);
+		local aura = C_UnitAuras.GetBuffDataByIndex(self.unit, i, filter);
 
 		frameName = selfName .. "Buff" .. i;
 		frame = _G[frameName];
 		if ( not frame ) then
-			if ( not icon ) then
+			if ( not aura or not aura.icon ) then
 				break;
 			else
 				frame = CreateFrame("Button", frameName, self, "CT_AssistBuffFrameTemplate");
 				frame.unit = self.unit;
 			end
 		end
-		if ( icon and ( not self.maxBuffs or i <= self.maxBuffs ) ) then
+		if ( aura and aura.icon and ( not self.maxBuffs or i <= self.maxBuffs ) ) then
 			frame:SetID(i);
 
 			-- set the icon
 			frameIcon = _G[frameName.."Icon"];
-			frameIcon:SetTexture(icon);
+			frameIcon:SetTexture(aura.icon);
 
 			-- set the count
 			frameCount = _G[frameName.."Count"];
-			if ( count > 1 ) then
-				frameCount:SetText(count);
+			if ( aura.applications > 1 ) then
+				frameCount:SetText(aura.applications);
 				frameCount:Show();
 			else
 				frameCount:Hide();
@@ -635,16 +635,16 @@ function CT_AssistFrame_UpdateAuras(self)
 			-- Handle cooldowns
 			frameCooldown = _G[frameName.."Cooldown"];
 			frameCooldown:SetHideCountdownNumbers(true)
-			if ( duration > 0 ) then
+			if ( aura.duration > 0 ) then
 				frameCooldown:Show();
-				CooldownFrame_Set(frameCooldown, expirationTime - duration, duration, 1);
+				CooldownFrame_Set(frameCooldown, aura.expirationTime - aura.duration, aura.duration, 1);
 			else
 				frameCooldown:Hide();
 			end
 
 			-- Show stealable frame if the target is not the current player and the buff is stealable.
 			frameStealable = _G[frameName.."Stealable"];
-			if ( not playerIsAssist and canStealOrPurge ) then
+			if ( not playerIsAssist and aura.isStealable ) then
 				frameStealable:Show();
 			else
 				frameStealable:Hide();
@@ -654,7 +654,7 @@ function CT_AssistFrame_UpdateAuras(self)
 --			largeBuffList[i] = (not playerIsAssist and PLAYER_UNITS[caster]);
 
 			-- set the buff to be big if the buff is cast by the player or his pet
-			largeBuffList[i] = PLAYER_UNITS[caster];
+			largeBuffList[i] = PLAYER_UNITS[aura.sourceUnit];
 
 			numBuffs = numBuffs + 1;
 
@@ -674,13 +674,12 @@ function CT_AssistFrame_UpdateAuras(self)
 	local index = 1;
 
 	while ( frameNum <= (self.maxDebuffs or MAX_TARGET_DEBUFFS) ) do
-		local debuffName = UnitDebuff(self.unit, index, filter);
-		if ( debuffName ) then
+		local aura = C_UnitAuras.GetDebuffDataByIndex(self.unit, index, filter);
+		if ( aura ) then
 			if ( CT_AssistFrame_ShouldShowDebuff(self.unit, index, filter) ) then
-				name, icon, count, debuffType, duration, expirationTime, caster = UnitDebuff(self.unit, index, filter);
 				frameName = selfName.."Debuff"..frameNum;
 				frame = _G[frameName];
-				if ( icon ) then
+				if ( aura.icon ) then
 					if ( not frame ) then
 						frame = CreateFrame("Button", frameName, self, "CT_AssistDebuffFrameTemplate");
 						frame.unit = self.unit;
@@ -689,12 +688,12 @@ function CT_AssistFrame_UpdateAuras(self)
 
 					-- set the icon
 					frameIcon = _G[frameName.."Icon"];
-					frameIcon:SetTexture(icon);
+					frameIcon:SetTexture(aura.icon);
 
 					-- set the count
 					frameCount = _G[frameName.."Count"];
-					if ( count > 1 ) then
-						frameCount:SetText(count);
+					if ( aura.count ~= nil and aura.count > 1 ) then
+						frameCount:SetText(aura.applications);
 						frameCount:Show();
 					else
 						frameCount:Hide();
@@ -703,16 +702,16 @@ function CT_AssistFrame_UpdateAuras(self)
 					-- Handle cooldowns
 					frameCooldown = _G[frameName.."Cooldown"];
 					frameCooldown:SetHideCountdownNumbers(true)
-					if ( duration > 0 ) then
+					if ( aura.duration > 0 ) then
 						frameCooldown:Show();
-						CooldownFrame_Set(frameCooldown, expirationTime - duration, duration, 1);
+						CooldownFrame_Set(frameCooldown, aura.expirationTime - aura.duration, aura.duration, 1);
 					else
 						frameCooldown:Hide();
 					end
 
 					-- set debuff type color
 					if ( debuffType ) then
-						color = DebuffTypeColor[debuffType];
+						color = DebuffTypeColor[aura.dispelName];
 					else
 						color = DebuffTypeColor["none"];
 					end
@@ -774,13 +773,17 @@ function CT_AssistFrame_ShouldShowDebuff(unit, index, filter)
 	if ( SHOW_ALL_ENEMY_DEBUFFS == "1" or not UnitCanAttack("player", unit) ) then
 		return true;
 	else
-		local name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, shouldConsolidate, spellId, canApplyAura, isBossDebuff, points1, points2, points3, isCastByPlayer = UnitDebuff(unit, index, filter);
+		local aura = C_UnitAuras.GetDebuffDataByIndex(unit, index, filter);
+		local name, icon, count, debuffType, 
+		duration, expirationTime, unitCaster, 
+		canStealOrPurge, shouldConsolidate, spellId, canApplyAura,
+		 isBossDebuff, points1, points2, points3, isCastByPlayer
 
-		local hasCustom, alwaysShowMine, showForMySpec = SpellGetVisibilityInfo(spellId, "ENEMY_TARGET");
+		local hasCustom, alwaysShowMine, showForMySpec = SpellGetVisibilityInfo(aura.spellId, "ENEMY_TARGET");
 		if ( hasCustom ) then
-			return showForMySpec or (alwaysShowMine and (unitCaster == "player" or unitCaster == "pet" or unitCaster == "vehicle") );
+			return showForMySpec or (alwaysShowMine and (aura.sourceUnit == "player" or aura.sourceUnit == "pet" or aura.sourceUnit == "vehicle") );
 		else
-			return not isCastByPlayer or unitCaster == "player" or unitCaster == "pet" or unitCaster == "vehicle";
+			return not isCastByPlayer or aura.sourceUnit == "player" or aura.sourceUnit == "pet" or aura.sourceUnit == "vehicle";
 		end
 	end
 end
@@ -1107,7 +1110,7 @@ function CT_TargetofAssist_OnLoad(self)
 			_G[thisName.."TextureFrameManaBarText"]
 		)
 	end
-	SetTextStatusBarTextZeroText(frame.healthbar, DEAD);
+	frame.healthbar.SetBarTextZeroText(frame.healthbar, DEAD);
 	frame:RegisterUnitEvent("UNIT_AURA", unit2);
 	frame.deadText = _G[thisName.."TextureFrameDeadText"];
 	SecureUnitButton_OnLoad(frame, frame.unit);

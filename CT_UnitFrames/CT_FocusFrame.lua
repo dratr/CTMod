@@ -1099,7 +1099,7 @@ function CT_TargetofFocus_OnLoad(self)
 			_G[thisName.."TextureFrameManaBarText"]
 		)
 	end
-	SetTextStatusBarTextZeroText(frame.healthbar, DEAD);
+	frame.healthbar:SetBarTextZeroText(frame.healthbar, DEAD);
 	frame:RegisterUnitEvent("UNIT_AURA", unit2);
 	frame.deadText = _G[thisName.."TextureFrameDeadText"];
 	SecureUnitButton_OnLoad(frame, frame.unit);

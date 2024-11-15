@@ -1011,7 +1011,6 @@ do
 						-- WoW 10.x
 						local data = C_TooltipInfo.GetInboxItem(mailIndex, i)
 						if data then
-							TooltipUtil.SurfaceArgs(data)
 							petSpecies, petQuality, petLevel, petName = data.battlePetSpeciesID, data.battlePetBreedQuality, data.battlePetLevel, data.battlePetName
 						end
 					else
