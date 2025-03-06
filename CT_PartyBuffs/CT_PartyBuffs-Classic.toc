@@ -1,10 +1,11 @@
-## Interface: 11500
-## Version: 10.0.2.3
+## Interface: 110107
+## Version: 11.1.7
 ## Title: CT_PartyBuffs
 ## Notes: Shows buffs at party member frames.
 ## DefaultState: Enabled
 ## SavedVariables: CT_PartyBuffsOptions
 ## Dependencies: CT_Library
+## Group: CT_Library
 ## X-Part-Of: CT-Library
 
 CT_PartyBuffs.xml

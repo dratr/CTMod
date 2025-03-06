@@ -1,3 +1,16 @@
+CT_MailMod (11.1.0.1) 2025-02-27
+- Further avoiding crafting orders to avoid getting hung
+
+CT_MailMod (11.0.2.5) 2024-09-19
+- Fix for tooltip with mail having multiple attachments
+- Fix for mail opening getting hung on crafting orders
+
+CT_MailMod (11.0.2.2) 2024-08-18
+- Updates for WoW: The War Within
+
+CT_MailMod (10.2.7.1) 2024-05-15
+- Update to closing mailbox in Classic with CT_MailMod
+
 CT_MailMod (10.0.7.1) 2023-03-19
 - Fixed a logging error
 

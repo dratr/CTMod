@@ -1,5 +1,5 @@
-## Interface: 100200
-## Version: 10.0.2.4
+## Interface: 110107
+## Version: 11.1.7
 ## Title: CT_RaidAssist
 ## Author: TS & Cide (Original), Dargen (MT Addon), DDC (Redesign)
 ## Notes: Monitor raid HP and click cast buffs, debuff removals, resurrections
@@ -7,6 +7,7 @@
 ## LoadOnDemand: 0
 ## Dependencies: CT_Library
 ## SavedVariables: CT_RaidAssistOptions
+## Group: CT_Library
 ## X-Part-Of: CT-Library
 
 # Durability tracking on both retail and classic
