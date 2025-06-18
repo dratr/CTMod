@@ -188,6 +188,26 @@ local function actionbuttonPostClick(self, ...)
 	self.object:postclick(self, ...);
 end
 
+local function actionButtonUpdateAssistedCombatRotationFrame(button)
+        local show = C_ActionBar.IsAssistedCombatAction(button.action)
+        local assistedCombatRotationFrame = button.AssistedCombatRotationFrame
+        if show and not assistedCombatRotationFrame then
+                assistedCombatRotationFrame = CreateFrame("Frame", nil, button, "ActionBarButtonAssistedCombatRotationTemplate")
+                button.AssistedCombatRotationFrame = assistedCombatRotationFrame
+        end
+        if not show and assistedCombatRotationFrame then
+        	button.AssistedCombatRotationFrame:Hide()
+        	button.AssistedCombatRotationFrame = nil
+        end
+        
+        if assistedCombatRotationFrame then
+                assistedCombatRotationFrame:UpdateState()
+        end
+
+end
+
+
+
 local actionButtonObjectPool = { };
 
 local function getActionButton(buttonId)
@@ -218,6 +238,7 @@ local function getActionButton(buttonId)
 		button.cooldown = CreateFrame("Cooldown", nil, parent, "CooldownFrameTemplate");
 		button.cooldown:SetDrawEdge(false);
 		button.cooldown:SetDrawBling(false);
+		button.cooldown:SetHideCountdownNumbers(true);
 		
 		button.blingcontainer = CreateFrame("Frame", nil, button)
 		button.blingcontainer:SetAllPoints()
@@ -463,6 +484,7 @@ function actionButton:constructor(buttonId, actionId, groupId, count, noInherit,
 	
 	button:RegisterForDrag("LeftButton", "RightButton");
 	button:SetAttribute("type", "action");
+	actionButtonUpdateAssistedCombatRotationFrame(button)
 end
 
 -- Destructor, run on object destruction
@@ -481,6 +503,7 @@ end
 -- General updater
 function actionButton:update()
 	-- Placeholder for derived classes
+	actionButtonUpdateAssistedCombatRotationFrame(button)
 end
 
 -- Update texture
@@ -674,6 +697,7 @@ module:regEvent("ACTIONBAR_SLOT_CHANGED", function(event, actionId)
 		for buttonId, object in pairs(actionButtonList) do
 			if (object and object.actionId == actionId)  then
 				object:update();
+	                        actionButtonUpdateAssistedCombatRotationFrame(object.button)
 			end
 		end
 	end

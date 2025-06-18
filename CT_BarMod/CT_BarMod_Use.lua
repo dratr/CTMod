@@ -816,7 +816,7 @@ local function CT_BarMod__ActionButton_GetOverlayGlow()
 	local overlay = tremove(unusedOverlayGlows);
 	if ( not overlay ) then
 		numOverlays = numOverlays + 1;
-		overlay = CreateFrame("Frame", "CT_BarMod__ActionButtonOverlay" .. numOverlays, UIParent, "ActionBarButtonSpellActivationAlert");
+		overlay = CreateFrame("Frame", "CT_BarMod__ActionButtonOverlay" .. numOverlays, UIParent, "ActionButtonSpellAlertTemplate");
 	end
 	return overlay;
 end

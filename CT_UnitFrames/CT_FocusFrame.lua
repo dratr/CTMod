@@ -595,12 +595,12 @@ function CT_FocusFrame_UpdateAuras(self)
 	local filter		-- intentionally nil
 	
 	for i=1, MAX_TARGET_BUFFS do
-		name, icon, count, debuffType, duration, expirationTime, caster, canStealOrPurge, _ , spellId = UnitBuff(self.unit, i, filter);
+		local aura = C_UnitAuras.GetBuffDataByIndex(self.unit, i, filter);
 
 		frameName = selfName .. "Buff" .. i;
 		frame = _G[frameName];
 		if ( not frame ) then
-			if ( not icon ) then
+			if ( not aura or not aura.icon ) then
 				break;
 			else
 				frame = CreateFrame("Button", frameName, self, "CT_FocusBuffFrameTemplate");
@@ -608,12 +608,12 @@ function CT_FocusFrame_UpdateAuras(self)
 				frame.Cooldown:GetRegions():ClearAllPoints()	-- Hack.  Prevents any font string from appearing to show the cooldown duration while action bar cooldowns are displayed.
 			end
 		end
-		if ( icon and ( not self.maxBuffs or i <= self.maxBuffs ) ) then
+		if ( aura and aura.icon and ( not self.maxBuffs or i <= self.maxBuffs ) ) then
 			frame:SetID(i);
 
 			-- set the icon
 			frameIcon = _G[frameName.."Icon"];
-			frameIcon:SetTexture(icon);
+			frameIcon:SetTexture(aura.icon);
 
 			-- set the count
 			frameCount = _G[frameName.."Count"];
@@ -626,16 +626,16 @@ function CT_FocusFrame_UpdateAuras(self)
 
 			-- Handle cooldowns
 			frameCooldown = _G[frameName.."Cooldown"];
-			if ( duration > 0 ) then
+			if ( aura.duration > 0 ) then
 				frameCooldown:Show();
-				CooldownFrame_Set(frameCooldown, expirationTime - duration, duration, 1);
+				CooldownFrame_Set(frameCooldown, aura.expirationTime - aura.duration, aura.duration, 1);
 			else
 				frameCooldown:Hide();
 			end
 
 			-- Show stealable frame if the focus is not the current player and the buff is stealable.
 			frameStealable = _G[frameName.."Stealable"];
-			if ( not playerIsFocus and canStealOrPurge ) then
+			if ( not playerIsFocus and aura.isStealable ) then
 				frameStealable:Show();
 			else
 				frameStealable:Hide();
@@ -645,7 +645,7 @@ function CT_FocusFrame_UpdateAuras(self)
 --			largeBuffList[i] = (not playerIsFocus and PLAYER_UNITS[caster]);
 
 			-- set the buff to be big if the buff is cast by the player or his pet
-			largeBuffList[i] = PLAYER_UNITS[caster];
+			largeBuffList[i] = PLAYER_UNITS[aura.sourceUnit];
 
 			numBuffs = numBuffs + 1;
 
