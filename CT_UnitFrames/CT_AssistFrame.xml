@@ -253,14 +253,12 @@
 					</Anchors>
 				</Texture>
 			</Layer>
-			<Layer level="ARTWORK">
-				<Texture name="$parentMyHealPredictionBar" inherits="MyHealPredictionBarTemplate"/>
-				<Texture name="$parentOtherHealPredictionBar" inherits="OtherHealPredictionBarTemplate"/>
-				<Texture name="$parentHealAbsorbBar" inherits="HealAbsorbBarTemplate"/>
-				<Texture name="$parentTotalAbsorbBar" inherits="TotalAbsorbBarTemplate"/>
-			</Layer>
 		</Layers>
 		<Frames>
+			<Frame parentKey="HealAbsorbBar" inherits="HealAbsorbBarTemplate"/>
+			<Frame parentKey="MyHealPredictionBar" inherits="MyHealPredictionBarTemplate"/>
+			<Frame parentKey="OtherHealPredictionBar" inherits="OtherHealPredictionBarTemplate"/>
+			<Frame parentKey="TotalAbsorbBar" inherits="TotalAbsorbBarTemplate"/>
 			<Frame name="$parentTextureFrame" parentKey="textureFrame" setAllPoints="true">
 				<Layers>
 					<Layer level="BACKGROUND">
@@ -497,7 +495,7 @@
 				</Anchors>
 				<Scripts>
 					<OnLoad>
-						TextStatusBar_Initialize(self);
+						self:InitializeTextStatusBar();
 						self.textLockable = 1;
 						self.cvar = "targetStatusText";
 						self.cvarLabel = "STATUS_TEXT_TARGET";
@@ -530,7 +528,7 @@
 				</Anchors>
 				<Scripts>
 					<OnLoad>
-						TextStatusBar_Initialize(self);
+						self:InitializeTextStatusBar(self);
 						self.textLockable = 1;
 						self.cvar = "targetStatusText";
 						self.cvarLabel = "STATUS_TEXT_TARGET";

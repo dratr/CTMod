@@ -218,6 +218,7 @@ local function getActionButton(buttonId)
 		button.cooldown = CreateFrame("Cooldown", nil, parent, "CooldownFrameTemplate");
 		button.cooldown:SetDrawEdge(false);
 		button.cooldown:SetDrawBling(false);
+		button.cooldown:SetHideCountdownNumbers(true);
 		
 		button.blingcontainer = CreateFrame("Frame", nil, button)
 		button.blingcontainer:SetAllPoints()

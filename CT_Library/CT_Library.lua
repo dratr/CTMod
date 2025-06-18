@@ -19,7 +19,7 @@
 -----------------------------------------------
 -- Initialization
 local LIBRARY_NAME, lib = ...;
-local LIBRARY_VERSION = strmatch(GetAddOnMetadata(LIBRARY_NAME, "version"), "^([%d.]+)");
+local LIBRARY_VERSION = strmatch(C_AddOns.GetAddOnMetadata(LIBRARY_NAME, "version"), "^([%d.]+)");
 
 -- Create tables for all the PROTECTED contents and PUBLIC interface of CTMod
 
@@ -94,9 +94,9 @@ local type = type;
 local unpack = unpack;
 
 -- For spell database
-local getNumSpellTabs = GetNumSpellTabs;
-local getSpellTabInfo = GetSpellTabInfo;
-local getSpellName = GetSpellBookItemName;
+local getNumSpellBookSkillLines = C_SpellBook.GetNumSpellBookSkillLines;
+local getSpellBookSkillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo;
+local getSpellName = C_SpellBook.GetSpellBookItemName;
 
 
 -- End Local Copies
@@ -788,13 +788,15 @@ end)
 local spellRanks, spellIds;
 
 -- Update a tab
-local function updateSpellTab(tabIndex)
+local function updateSpellLine(lineIndex)
 	local spellName, rankName, rank, oldRank, spellId;
-	local _, _, offset, numSpells = getSpellTabInfo(tabIndex);
+	local lineInfo = getSpellBookSkillLineInfo(lineIndex);
+	local offset = lineInfo.itemIndexOffset
+	local numSpells = lineInfo.numSpellBookItems
 	for spellIndex = 1, numSpells, 1 do
 
 		spellId = offset + spellIndex;
-		spellName, rankName = getSpellName(spellId, "spell");
+		spellName, rankName = getSpellName(spellId, Enum.SpellBookSpellBank.Player);
 
 		_, _, rank = string.find(rankName or "", "(%d+)$");
 		oldRank = spellRanks[spellName];
@@ -818,13 +820,13 @@ local function updateSpellDatabase(event, arg1, arg2)
 		spellRanks = {};
 		spellIds = {};
 	end
-	if ( (event == "LEARNED_SPELL_IN_TAB") and arg2 ) then
+	if ( (event == "LEARNED_SPELL_IN_SKILL_LINE") and arg2 ) then
 		-- arg1 == spell number
-		-- arg2 == tab number that spell was added to
-		updateSpellTab(arg2);
+		-- arg2 == line number that spell was added to
+		updateSpellLine(arg2);
 	else
-		for tabIndex = 1, getNumSpellTabs(), 1 do
-			updateSpellTab(tabIndex);
+		for lineIndex = 1, getNumSpellBookSkillLines(), 1 do
+			updateSpellLine(lineIndex);
 		end
 	end
 end
@@ -838,7 +840,7 @@ function lib:getSpell(name)
 	return spellIds[name], spellRanks[name];
 end
 
-lib:regEvent("LEARNED_SPELL_IN_TAB", updateSpellDatabase);
+lib:regEvent("LEARNED_SPELL_IN_SKILL_LINE", updateSpellDatabase);
 if (lib:getGameVersion() >= 8) then
 	lib:regEvent("PLAYER_TALENT_UPDATE", updateSpellDatabase);
 end

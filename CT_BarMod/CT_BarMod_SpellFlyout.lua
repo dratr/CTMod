@@ -19,7 +19,8 @@ local module = select(2, ...);
 --------------------------------------------
 -- Mimicking SpellFlyout.xml
 
-local spellFlyout = CreateFrame("Frame", "CT_BarMod_SpellFlyout", nil, "SecureFrameTemplate, ResizeLayoutFrame")
+local spellFlyout = CreateFrame("Frame", "CT_BarMod_SpellFlyout", nil, "SecureFrameTemplate, ResizeLayoutFrame, FlyoutPopupTemplate")
+Mixin(spellFlyout, SpellFlyoutMixin);
 spellFlyout:SetToplevel(true)
 spellFlyout:Hide()
 spellFlyout:SetFrameStrata("DIALOG")
@@ -98,9 +99,7 @@ spellFlyout:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 
-SpellFlyout_OnLoad(spellFlyout)
 spellFlyout:SetBorderColor(0.5, 0.5, 0.5)
-spellFlyout:SetBorderSize(47)
 spellFlyout.Toggle = nop	-- replaced with a secure snippet
 
 -- Workaround; pushing the buttons forward one frame level
@@ -164,7 +163,7 @@ function module.createSpellFlyoutButtons(numSlots)	-- must not be called during 
 		
 		function button:updateSpellID(spellID)
 			button.spellID = spellID
-			button.Icon:SetTexture(GetSpellTexture(spellID))
+			button.Icon:SetTexture(C_Spell.GetSpellTexture(spellID))
 		end
 	end
 end
