@@ -339,7 +339,7 @@ local setActionPage_unsecure = function(self, page)
 	-- Blizzard doesn't update the page number font string on the
 	-- action bar arrows when you get into a vehicle, even though
 	-- the game has changed the action bar page to 1 (GetActionBarPage() == 1).
-	(MainMenuBarPageNumber or MainMenuBarArtFrame and MainMenuBarArtFrame.PageNumber or MainMenuBar.ActionBarPageNumber.Text):SetText(GetActionBarPage());   --Changed in WoW 8.0.1
+	(MainMenuBarPageNumber or MainMenuBarArtFrame and MainMenuBarArtFrame.PageNumber or MainMenuBar and MainMenuBar.ActionBarPageNumber.Text or MainActionBar.ActionBarPageNumber.Text):SetText(GetActionBarPage());   --Changed in WoW 8.0.1
 
 
 	-- Update our key bindings list if the window is visible.

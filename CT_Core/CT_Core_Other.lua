@@ -1516,7 +1516,10 @@ end
 local function hide_gryphons(val)
 	if (CT_BottomBar) then return; end
 	if (val) then
-		if MainMenuBar.EndCaps then
+		if MainActionBar.EndCaps then
+			MainActionBar.EndCaps.LeftEndCap:Hide()
+			MainActionBar.EndCaps.RightEndCap:Hide()
+		elseif MainMenuBar.EndCaps then
 			MainMenuBar.EndCaps.LeftEndCap:Hide()
 			MainMenuBar.EndCaps.RightEndCap:Hide()
 		elseif module:getGameVersion() >= 8 then
@@ -1527,7 +1530,10 @@ local function hide_gryphons(val)
 			MainMenuBarRightEndCap:Hide()
 		end
 	else
-		if MainMenuBar.EndCaps then
+		if MainActionBar.EndCaps then
+			MainActionBar.EndCaps.LeftEndCap:Show()
+			MainActionBar.EndCaps.RightEndCap:Show()
+		elseif MainMenuBar.EndCaps then
 			MainMenuBar.EndCaps.LeftEndCap:Show()
 			MainMenuBar.EndCaps.RightEndCap:Show()
 		elseif module:getGameVersion() >= 8 then

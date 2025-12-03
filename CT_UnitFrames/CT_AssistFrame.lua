@@ -1154,12 +1154,12 @@ function CT_TargetofAssist_Update(self, elapsed)
 	UnitFrame_Update(self);
 	CT_TargetofAssist_CheckDead(self);
 	CT_TargetofAssist_HealthCheck(self);
-	RefreshDebuffs(self, self.unit);
+        AuraUtil.RefreshAuras(self, self.unit, nil, nil, true, false);
 end
 
 function CT_TargetofAssist_OnEvent(self, event, ...)
 	if (event == "UNIT_AURA") then
-		RefreshDebuffs(self, self.unit);
+		AuraUtil.RefreshAuras(self, self.unit, nil, nil, true, false);
 	else
 		UnitFrame_OnEvent(self, event, ...);
 	end
