@@ -1143,12 +1143,12 @@ function CT_TargetofFocus_Update(self, elapsed)
 	UnitFrame_Update(self);
 	CT_TargetofFocus_CheckDead(self);
 	CT_TargetofFocus_HealthCheck(self);
-        AuraUtil.RefreshAuras(self, self.unit, nil, nil, true, false);
+	RefreshDebuffs(self, self.unit);
 end
 
 function CT_TargetofFocus_OnEvent(self, event, ...)
 	if (event == "UNIT_AURA") then
-	        AuraUtil.RefreshAuras(self, self.unit, nil, nil, true, false);
+		RefreshDebuffs(self, self.unit);
 	else
 		UnitFrame_OnEvent(self, event, ...);
 	end

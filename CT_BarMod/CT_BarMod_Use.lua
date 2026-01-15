@@ -72,7 +72,7 @@ local ActionButton_UpdateUsable = ActionButton_UpdateUsable or ActionBarActionBu
 local ActionHasRange = ActionHasRange;
 local CanExitVehicle = CanExitVehicle;
 local GetActionCharges = GetActionCharges;
-local GetActionCooldown = GetActionCooldown;
+local GetActionCooldown = C_ActionBar.GetActionCooldown;
 
 -- GetActionCount, overridden for WoW Classic 1.13.3 (CTMod 8.2.5.8) using GetItemCount and some tooltip scanning
 local OldGetActionCount, GetActionCount, GetItemCount, ReagentScannerTooltip = GetActionCount, GetActionCount, GetItemCount, CreateFrame("GameTooltip", "CT_BarMod_ReagentScanner", nil, "GameTooltipTemplate");
@@ -179,7 +179,9 @@ cooldownUpdater = function()
 	for button, fsCount in pairs(cooldownList) do
 		if button.actionId then
 			start, duration, enable = GetActionCooldown(button.actionId);
-			if ( start > 0 and enable > 0 ) then
+			local cd = GetActionCooldown(button.actionId);
+			start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
+			if ( start > 0 and enable ) then
 				updateCooldown(fsCount, duration - (currTime - start));
 			else
 				dropCooldownFromQueue(button);
@@ -823,6 +825,7 @@ end
 
 local function CT_BarMod__ActionButton_HideOverlayGlow(self)
 	-- This is a modified version of ActionButton_HideOverlayGlow from ActionButton.lua
+	-- 12.0: ActionButtonSpellAlertManager:HideAlert
 	if ( self.overlay ) then
 		if ( self.overlay.ProcStartAnim:IsPlaying() ) then
 			self.overlay.ProcStartAnim:Stop();
@@ -837,6 +840,7 @@ end
 
 local function CT_BarMod__ActionButton_ShowOverlayGlow(self)
 	-- This is a modified version of ActionButton_ShowOverlayGlow from ActionButton.lua
+	-- 12.0: ActionButtonSpellAlertManager:ShowAlert
 	if (hideGlow) then
 		CT_BarMod__ActionButton_HideOverlayGlow(self);
 		return;
@@ -871,16 +875,10 @@ end
 
 local function CT_BarMod__ActionButton_UpdateOverlayGlow(self)
 	-- This is a modified version of ActionButton_UpdateOverlayGlow from ActionButton.lua
+	-- Modified version of ActionBarActionButtonMixin:UpdateSpellAlert() in 12.0
 	local spellType, id, subType  = GetActionInfo(self.action);
-	if ( spellType == "spell" and IsSpellOverlayed(id) ) then
+	if ( (spellType == "spell" or spellType == "macro") and C_SpellActivationOverlay.IsSpellOverlayed(id) ) then
 		CT_BarMod__ActionButton_ShowOverlayGlow(self);
-	elseif ( spellType == "macro" ) then
-		local spellId = GetMacroSpell(id);
-		if ( spellId and IsSpellOverlayed(spellId) ) then
-			CT_BarMod__ActionButton_ShowOverlayGlow(self);
-		else
-			CT_BarMod__ActionButton_HideOverlayGlow(self);
-		end
 	else
 		CT_BarMod__ActionButton_HideOverlayGlow(self);
 	end
@@ -1038,8 +1036,10 @@ function useButton:updateCooldown()
 		local recharge = self.button.recharge;
 		
 		-- Action cooldown
-		local start, duration, enable = GetActionCooldown(self.actionId);
-		if ( start > 0 and enable > 0 ) then
+		local cd = GetActionCooldown(self.actionId);
+		local start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
+		
+		if ( start > 0 and enable ) then
 			cooldown:SetCooldown(start, duration);
 			actionCooldown = true;
 			if ( displayCount ) then
@@ -1881,8 +1881,9 @@ do
 		self.actionId = actionId;
 
 		if actionId then
-			local start, duration, enable = GetActionCooldown(actionId);
-			if ( start > 0 and enable > 0 ) then
+			local cd = GetActionCooldown(actionId);
+			local start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
+			if ( start > 0 and enable ) then
 				startCooldown(cooldown, start, duration);
 				if (not displayCount) then
 					hideCooldown(cooldown);
