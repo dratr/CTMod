@@ -149,44 +149,11 @@ local UnitExists = UnitExists;
 -- Cooldown Handler
 
 local cooldownList = {};
-local cooldownUpdater;
-
-local function updateCooldown(fsCount, time)
-	if ( time > 3540 ) then
-		-- Hours
-		fsCount:SetText(ceil(time/3600).."h");
-	elseif ( time > 60 ) then
-		-- Minutes
-		fsCount:SetText(ceil(time/60).."m");
-	elseif ( time > 1 ) then
-		-- Seconds
-		fsCount:SetText(ceil(time));
-	else
-		fsCount:SetText("");
-	end
-end
 
 local function dropCooldownFromQueue(button)
 	cooldownList[button] = nil;
 	if ( not next(cooldownList) ) then
 		module:unschedule(cooldownUpdater, true);
-	end
-end
-
-cooldownUpdater = function()
-	local currTime = GetTime();
-	local start, duration, enable;
-	for button, fsCount in pairs(cooldownList) do
-		if button.actionId then
-			start, duration, enable = GetActionCooldown(button.actionId);
-			local cd = GetActionCooldown(button.actionId);
-			start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
-			if ( start > 0 and enable ) then
-				updateCooldown(fsCount, duration - (currTime - start));
-			else
-				dropCooldownFromQueue(button);
-			end
-		end
 	end
 end
 
@@ -217,29 +184,6 @@ function CT_BarMod_HideShowAllCooldowns(show)
 			end
 		end
 	end
-end
-
-local function startCooldown(cooldown, start, duration)
-	if ( duration < 2 ) then
-		stopCooldown(cooldown);
-		return;
-	end
-	
-	local fsCount = cooldown.fsCount;
-	local font = "CT_BarMod_CooldownFont";
-	if ( not fsCount ) then
-		fsCount = cooldown:CreateFontString(nil, "OVERLAY", font);
-		fsCount:SetPoint("CENTER", cooldown);
-		cooldown.fsCount = fsCount;
-	end
-	
-	if ( not next(cooldownList) ) then
-		module:schedule(0.5, true, cooldownUpdater);
-	end
-	cooldownList[cooldown.object] = fsCount;
-	
-	fsCount:Show();
-	updateCooldown(fsCount, duration - (GetTime() - start));
 end
 
 --------------------------------------------
@@ -545,10 +489,6 @@ function useButton:destructor(...)
 	self.actionType = nil;
 	self.checked = nil;
 	
-	if ( self.flashing ) then
-		self:stopFlash();
-	end
-	
 	actionButton.destructor(self, ...);
 end
 
@@ -677,10 +617,8 @@ function useButton:update()
 	
 --	self:updateCount();
 	self:updateBinding();
-	self:updateRange();
+--	self:updateRange();
 	self:updateTexture();
---	self:updateState();  -- updateFlash() calls updateState().
-	self:updateFlash();
 	self:updateUnitAttributes();
 	if ( hasAction or actionMode == "cancel" or actionMode == "leave" ) then
 		self:updateUsable();
@@ -700,7 +638,6 @@ function useButton:update()
 		if (texture) then
 			icon:SetTexture(texture);
 			self:setNormalTexture(normalTexture2);
-			self:updateCount();
 		else
 			icon:SetTexture(nil);
 			if (useNonEmptyNormal) then
@@ -745,182 +682,6 @@ function useButton:update()
 		button.border:Hide();
 	end
 	
-	-- Action text
-	if ( displayActionText and not self.isConsumable and not self.isStackable and (self.isItem or GetActionCount(actionId) == 0) ) then
-		button.name:SetText(GetActionText(actionId));
-	else
-		button.name:SetText("");
-	end
-
-	-- Flyout appearance (This was added to the default ui in WoW patch 4.0.1)
-	self:updateFlyout();
-
-	-- Overlay glow (This was added to the default ui in WoW patch 4.0.1)
-	self:updateOverlayGlow();
-end
-
--- Jan 2, 2012
---
--- The following overlay glow routines are modifed version of the ones in Blizzard's FrameXML\ActionButton.lua.
--- I've changed their names and rearranged their order so that they can be "local" functions.
---
--- We can't use Blizzard's functions directly any more because doing so introduces some taint which produces
--- the following error (from the taint.log file):
---
--- 1/2 16:31:34.374  An action was blocked in combat because of taint from CT_BarMod - ActionButton10:Show()
--- 1/2 16:31:34.374      Interface\FrameXML\ActionButton.lua:246
--- 1/2 16:31:34.374      ActionButton_Update()
--- 1/2 16:31:34.374      Interface\FrameXML\ActionButton.lua:484 ActionButton_OnEvent()
--- 1/2 16:31:34.374      Interface\FrameXML\ActionButton.lua:105
--- 1/2 16:31:34.374      UseAction()
--- 1/2 16:31:34.374      Interface\FrameXML\SecureTemplates.lua:275 handler()
--- 1/2 16:31:34.374      Interface\FrameXML\SecureTemplates.lua:561
---
--- Line 246 in ActionButton.lua was attempting to Show() the button. We don't have access to the 
--- Show() programming, but it appears that something in that routine was trying to access a tainted
--- value.
---
--- By creating a copy of the overlay glow related routines from ActionButton.lua, adjusting the overlay
--- frame template that is used, and using our own local table to recycle frames, we can avoid tainting
--- Blizzard's code.
---
--- Some observations:
---
--- - When I was testing, I was using a shadowpriest who had mind blast on the 9th button of the main action bar.
---   This is why the action blocked errors I was getting only started with the 10th ActionButton.
---
--- - I was getting the error when doing the following: Reload UI, enter combat with no shadow orbs, gain 3 shadow
---   orbs (this triggers some button overlay code), press the button that Shadowform is assigned to.
---
--- - The "feedback_action" key in the ActionButton10 table indicated that it had been tainted by CT_BarMod.
---   The same key in ActionButton9 was not tainted.
---   /run for k, v in pairs(ActionButton10) do print(k, issecurevariable(ActionButton10, k)) end
---
--- - Using Blizzard's functions directly causes "tainted" overlay frames created by CT_BarMod to get
---   added to a local table called "unusedOverlayGlows" that Blizzard maintains to recycle frames.
---   If Blizzard re-uses an old CT_BarMod overlay frame, then taint could be introduced.
---
-
---Overlay stuff
-local unusedOverlayGlows = {};
-local numOverlays = 0;
-
-local function CT_BarMod__ActionButton_OverlayGlowAnimOutFinished(overlay)
-	-- This is a modified version of ActionButton_OverlayGlowAnimOutFinished from ActionButton.lua
-	local actionButton = overlay:GetParent();
-	overlay:Hide();
-	tinsert(unusedOverlayGlows, overlay);
-	actionButton.overlay = nil;
-end
-
-local function CT_BarMod__ActionButton_GetOverlayGlow()
-	-- This is a modified version of ActionButton_GetOverlayGlow from ActionButton.lua
-	local overlay = tremove(unusedOverlayGlows);
-	if ( not overlay ) then
-		numOverlays = numOverlays + 1;
-		overlay = CreateFrame("Frame", "CT_BarMod__ActionButtonOverlay" .. numOverlays, UIParent, "ActionButtonSpellAlertTemplate");
-	end
-	return overlay;
-end
-
-local function CT_BarMod__ActionButton_HideOverlayGlow(self)
-	-- This is a modified version of ActionButton_HideOverlayGlow from ActionButton.lua
-	-- 12.0: ActionButtonSpellAlertManager:HideAlert
-	if ( self.overlay ) then
-		if ( self.overlay.ProcStartAnim:IsPlaying() ) then
-			self.overlay.ProcStartAnim:Stop();
-		end
-		if ( self:IsVisible() ) then
-			self.overlay:Hide()
-		else
-			CT_BarMod__ActionButton_OverlayGlowAnimOutFinished(self.overlay);
-		end
-	end
-end
-
-local function CT_BarMod__ActionButton_ShowOverlayGlow(self)
-	-- This is a modified version of ActionButton_ShowOverlayGlow from ActionButton.lua
-	-- 12.0: ActionButtonSpellAlertManager:ShowAlert
-	if (hideGlow) then
-		CT_BarMod__ActionButton_HideOverlayGlow(self);
-		return;
-	end
-	if ( self.overlay ) then
-		if ( not self.overlay:IsShown() ) then
-			self.overlay:Show()
-			self.overlay.ProcStartAnim:Play()
-		end
-	else
-		self.overlay = CT_BarMod__ActionButton_GetOverlayGlow();
-
-		if (module:usingMasque()) then
-			-- Have Masque assign spell alert textures based on the shape of the skin.
-			module:skinMasqueSpellAlert(self);
-		else
-			-- Assign spell alert textures for CT_BarMod.
-			-- The CT_BarMod skins are square only, so pass nil for the
-			-- Glow and Ants textures to use the default square textures.
-			module:skinOverlayGlow(self, nil, nil);
-		end
-
-		local frameWidth, frameHeight = self:GetSize();
-		self.overlay:SetParent(self);
-		self.overlay:ClearAllPoints();
-		self.overlay:SetSize(frameWidth * 1.4, frameHeight * 1.4);
-		self.overlay:SetPoint("TOPLEFT", self, "TOPLEFT", -frameWidth * 0.2, frameHeight * 0.2);
-		self.overlay:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", frameWidth * 0.2, -frameHeight * 0.2);
-		self.overlay.ProcStartAnim:Play();
-	end
-end
-
-local function CT_BarMod__ActionButton_UpdateOverlayGlow(self)
-	-- This is a modified version of ActionButton_UpdateOverlayGlow from ActionButton.lua
-	-- Modified version of ActionBarActionButtonMixin:UpdateSpellAlert() in 12.0
-	local spellType, id, subType  = GetActionInfo(self.action);
-	if ( (spellType == "spell" or spellType == "macro") and C_SpellActivationOverlay.IsSpellOverlayed(id) ) then
-		CT_BarMod__ActionButton_ShowOverlayGlow(self);
-	else
-		CT_BarMod__ActionButton_HideOverlayGlow(self);
-	end
-end
-
-function useButton:updateOverlayGlow()
-	if (module:getGameVersion() >= 4) then
-		CT_BarMod__ActionButton_UpdateOverlayGlow(self.button);
-	end
-end
-
-function useButton:showOverlayGlow(arg1)
-	-- Based on the code that handles the "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW" event in ActionButton.lua
-	local actionType, id, subType = GetActionInfo(self.actionId);
-	if ( actionType == "spell" and id == arg1 ) then
-		CT_BarMod__ActionButton_ShowOverlayGlow(self.button);
-	elseif ( actionType == "macro" ) then
-		-- id == macro number
-		local spellId = GetMacroSpell(id);
-		if (spellId and spellId == arg1 ) then
-			CT_BarMod__ActionButton_ShowOverlayGlow(self.button);
-		end
-	elseif (actionType == "flyout" and FlyoutHasSpell(id, arg1)) then
-		CT_BarMod__ActionButton_ShowOverlayGlow(self.button);
-	end
-end
-
-function useButton:hideOverlayGlow(arg1)
-	-- Based on the code that handles the "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE" event in ActionButton.lua
-	local actionType, id, subType = GetActionInfo(self.actionId);
-	if ( actionType == "spell" and id == arg1 ) then
-		-- id == spell number
-		CT_BarMod__ActionButton_HideOverlayGlow(self.button);
-	elseif ( actionType == "macro" ) then
-		-- id == macro number
-		local spellId = GetMacroSpell(id);
-		if (spellId and spellId == arg1 ) then
-			CT_BarMod__ActionButton_HideOverlayGlow(self.button);
-		end
-	elseif (actionType == "flyout" and FlyoutHasSpell(id, arg1)) then
-		CT_BarMod__ActionButton_HideOverlayGlow(self.button);
-	end
 end
 
 if ActionButton_UpdateFlyout then
@@ -1035,49 +796,7 @@ function useButton:updateCooldown()
 		local bling = self.button.bling;
 		local recharge = self.button.recharge;
 		
-		-- Action cooldown
-		local cd = GetActionCooldown(self.actionId);
-		local start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
-		
-		if ( start > 0 and enable ) then
-			cooldown:SetCooldown(start, duration);
-			actionCooldown = true;
-			if ( displayCount ) then
-				startCooldown(cooldown, start, duration);
-			else
-				stopCooldown(cooldown);
-			end
-			bling:SetShown(duration >= minimumCooldownToBling)
-		else
-			stopCooldown(cooldown);
-			actionCooldown = false;
-		end
-
-		-- Loss of control cooldown
-		local start, duration = GetActionLossOfControlCooldown(self.actionId);
-		--cooldown:SetLossOfControlCooldown(start, duration);
-		if (start > 0 and duration > 0) then
-			controlCooldown = true;
-			bling:SetShown(duration >= minimumCooldownToBling)
-		else
-			controlCooldown = false;
-		end
-
-		-- Hide/show the cooldown
-		if (actionCooldown or controlCooldown) then
-			cooldown:Show();
-		else
-			cooldown:Hide();
-		end
-
-		-- Recharge animation
-		local current, maxCharges, start, duration, modRate = GetActionCharges(self.actionId);
-		if (displayRecharge and current > 0 and current < maxCharges) then
-			recharge:SetCooldown(start, duration, modRate);
-			recharge:Show();
-		else
-			recharge:Hide();
-		end
+		ActionButton_UpdateCooldown(self.button);
 	
 	end
 end
@@ -1150,45 +869,6 @@ function useButton:clearRange()
 		self.outOfRange = nil;
 		self.button.hotkey:SetVertexColor(0.6, 0.6, 0.6);
 	end
-end
-
--- Update Count
-function useButton:updateCount()
-	local actionId = self.actionId;
-	local text = self.button.count;
-	if ( self.hasAction ) then
-		local count = GetActionCount(actionId)
-		if (
-			self.isConsumable
-			or self.isStackable
-			or (not self.isItem and count > 0)
-		) then
-			text:SetText(count < 1000 and count or "*");
-		else
-			local charges, maxCharges, chargeStart, chargeDuration = GetActionCharges(actionId);
-			if (maxCharges > 1) then
-				text:SetText(charges);
-			else
-				text:SetText("");
-			end
-		end
-	else
-		text:SetText("");
-	end
-end
-
--- Update Flash
-function useButton:updateFlash(flash)
-	local actionId = self.actionId;
-	if (flash == nil) then
-		flash = ( IsAttackAction(actionId) and IsCurrentAction(actionId) ) or IsAutoRepeatAction(actionId);
-	end
-	if ( flash ) then
-		self:startFlash();
-	elseif ( self.flashing ) then
-		self:stopFlash();
-	end
-	self:updateState();
 end
 
 function useButton:updateBackdrop()
@@ -1504,7 +1184,6 @@ function useButton:ondragstart(button, actionId, kind, value, ...)
 	-- and show it as checked, we need to force both of those
 	-- states to false.
 	-- print("ondragstart", button, actionId, kind, value, ...);
-	self:updateFlash(false);
 	self:updateState(false);
 end
 
@@ -1524,65 +1203,6 @@ end
 -- OnLeave
 function useButton:onleave()
 	self:updateFlyout();
-end
-
-------------------------
--- Flash Handling
-
-local flashingButtons;
-
--- Toggles flashing on a button
-local function toggleFlash(object, enable)
-	local flash = object.button.flash;
-	
-	if ( enable ~= nil ) then
-		if ( enable ) then
-			flash:Show();
-		else
-			flash:Hide();
-		end
-	else
-		if ( not flash:IsShown() ) then
-			flash:Show();
-		else
-			flash:Hide();
-		end
-	end
-end
-
--- Periodic flash updater
-local function flashUpdater()
-	if ( flashingButtons ) then
-		for key, value in pairs(flashingButtons) do
-			toggleFlash(key);
-		end
-	end
-end
-
--- Start Flashing
-function useButton:startFlash()
-	if ( not flashingButtons ) then
-		flashingButtons = { };
-	end
-	
-	self.flashing = true;
-	toggleFlash(self, true);
-	flashingButtons[self] = true;
-	
-	module:unschedule(flashUpdater, true);
-	module:schedule(0.5, true, flashUpdater);
-end
-
--- Stop Flashing
-function useButton:stopFlash()
-	if ( flashingButtons and self.flashing ) then
-		self.flashing = nil;
-		flashingButtons[self] = nil;
-		toggleFlash(self, false);
-		if ( not next(flashingButtons) ) then
-			module:unschedule(flashUpdater, true);
-		end
-	end
 end
 
 function useButton:updateSummonPets()
@@ -1672,13 +1292,8 @@ local function eventHandler_UpdateStateCompanion(event, arg1)
 	end
 end
 
-local function eventHandler_UpdateCount()
-	actionButtonList:updateCount();
-end
-
 local function eventHandler_UpdateCooldown()
 	actionButtonList:updateUsable();
-	actionButtonList:updateCount();
 	actionButtonList:updateCooldown();
 	
 end
@@ -1697,15 +1312,6 @@ local function eventHandler_UpdateBindings()
 end
 
 local function eventHandler_CheckRepeat()
-	actionButtonList:updateFlash();
-end
-
-local function eventHandler_ShowOverlayGlow(event, arg1)
-	actionButtonList:showOverlayGlow(arg1);
-end
-
-local function eventHandler_HideOverlayGlow(event, arg1)
-	actionButtonList:hideOverlayGlow(arg1);
 end
 
 local function eventHandler_updateSummonPets()
@@ -1849,105 +1455,6 @@ do
 		ActionButton_UpdateUsable(self);
 	end
 
-	function CT_BarMod_UpdateActionButtonRange()
-		if (defbarShowRange) then
-			updateBlizzardButtons(CT_BarMod_ActionButton_FadeOutOfRange);
-			isReset = nil;
-		elseif (isReset) then
-			return;
-		else
-			updateBlizzardButtons(CT_BarMod_ActionButton_ResetRange);
-			isReset = true;
-		end
-	end
-	
-	module:regEvent("PLAYER_TARGET_CHANGED", CT_BarMod_UpdateActionButtonRange);
-	module:regEvent("ACTIONBAR_PAGE_CHANGED", CT_BarMod_UpdateActionButtonRange);
-end
-
------
--- Cooldown Count
------
-do
-	local isReset = true;
-
-	local function CT_BarMod_ActionButton_UpdateCooldown(self)
-
-		local actionId = ActionButton_GetPagedID(self);
-		local cooldown = self.cooldown;
-
-		-- Set up variables we need in our cooldown handler
-		cooldown.object = self;
-		self.actionId = actionId;
-
-		if actionId then
-			local cd = GetActionCooldown(actionId);
-			local start, duration, enable = cd.startTime, cd.duration, cd.isEnabled;
-			if ( start > 0 and enable ) then
-				startCooldown(cooldown, start, duration);
-				if (not displayCount) then
-					hideCooldown(cooldown);
-				end
-			else
-				hideCooldown(cooldown);
-			end
-		else
-			local i = 1;
-	 		local button = _G["SpellFlyoutButton"..i];
-	 		while (button and button:IsShown()) do
-	 			local start, duration, enable = GetSpellCooldown(button.spellID);
-				if ( start > 0 and duration > 0 and enable > 0 ) then
-					startCooldown(cooldown, start, duration);
-					if (not displayCount) then
-						hideCooldown(cooldown);
-					end
-				else
-					hideCooldown(cooldown);
-				end
-	 			i = i + 1;
-	 			button = _G["SpellFlyoutButton"..i];
-	 		end
-		end
-	end
-
-	local function CT_BarMod_ActionButton_ResetCooldown(self)
-		-- Reset button to Blizzard default state.
-
-		local actionId = ActionButton_GetPagedID(self);
-		local cooldown = self.cooldown;
-
-		-- Set up variables we need in our cooldown handler
-		cooldown.object = self;
-		self.actionId = actionId;
-
-		stopCooldown(cooldown);
-	end
-
-	function CT_BarMod_UpdateActionButtonCooldown()
-		if (defbarShowCooldown) then
-			updateBlizzardButtons(CT_BarMod_ActionButton_UpdateCooldown);
-			isReset = nil;
-		elseif (isReset) then
-			return;
-		else
-			updateBlizzardButtons(CT_BarMod_ActionButton_ResetCooldown);
-			isReset = true;
-		end
-	end
-	
-	module:regEvent("ACTIONBAR_UPDATE_COOLDOWN", CT_BarMod_UpdateActionButtonCooldown);
-	module:regEvent("ACTIONBAR_PAGE_CHANGED", CT_BarMod_UpdateActionButtonCooldown);
-end
-
------
--- Cooldown Recharge
------
-do
-	hooksecurefunc("StartChargeCooldown", function(parent, chargeStart)
-		if (chargeStart ~= 0 and displayRecharge == false and defbarShowRecharge) then
-			ClearChargeCooldown(parent)
-		end
-	end)
 end
 
 -----
@@ -2180,8 +1687,6 @@ module.useEnable = function(self)
 	end
 	if module:getGameVersion() >= 4 then
 		self:regEvent("ARCHAEOLOGY_CLOSED", eventHandler_UpdateState);
-		self:regEvent("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", eventHandler_ShowOverlayGlow);
-		self:regEvent("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE", eventHandler_HideOverlayGlow);
 	end
 	if module:getGameVersion() >= 5 then
 		self:regEvent("UPDATE_SUMMONPETS_ACTION", eventHandler_updateSummonPets);
@@ -2227,8 +1732,6 @@ module.useDisable = function(self)
 	end
 	if module:getGameVersion() >= 4 then
 		self:unregEvent("ARCHAEOLOGY_CLOSED", eventHandler_UpdateState);
-		self:unregEvent("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", eventHandler_ShowOverlayGlow);
-		self:unregEvent("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE", eventHandler_HideOverlayGlow);
 	end
 	if module:getGameVersion() >= 5 then		
 		self:unregEvent("UPDATE_SUMMONPETS_ACTION", eventHandler_updateSummonPets);
@@ -2313,10 +1816,6 @@ module.useUpdate = function(self, optName, value)
 		displayRecharge = value;
 		actionButtonList:updateCooldown();
 
-	elseif ( optName == "hideGlow" ) then
-		hideGlow = value;
-		actionButtonList:updateOverlayGlow();
-
 	elseif ( optName == "buttonLock" ) then
 		buttonLock = value;
 		actionButtonList:updateLock();
@@ -2357,17 +1856,11 @@ module.useUpdate = function(self, optName, value)
 	elseif ( optName == "hideTooltip" ) then
 		hideTooltip = value;
 
-	elseif ( optName == "defbarShowRange" ) then
-		defbarShowRange = value;
-		CT_BarMod_UpdateActionButtonRange();
-
 	elseif ( optName == "defbarShowCooldown" ) then
 		defbarShowCooldown = value;
-		CT_BarMod_UpdateActionButtonCooldown();
 
 	elseif ( optName == "defbarShowRecharge" ) then
 		defbarShowRecharge = value;
-		CT_BarMod_UpdateActionButtonCooldown();
 
 	elseif ( optName == "defbarShowBindings" ) then
 		defbarShowBindings = value;
@@ -2446,8 +1939,6 @@ module.useUpdate = function(self, optName, value)
 		end
 		actionButtonList:updateVisibility();
 
-		CT_BarMod_UpdateActionButtonCooldown();
-		CT_BarMod_UpdateActionButtonRange();
 		CT_BarMod_UpdateActionButtonHotkeys();
 		CT_BarMod_UpdateActionButtonActionText();
 		CT_BarMod_UpdateActionButtonUnitAttributes();

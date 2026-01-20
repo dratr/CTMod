@@ -214,7 +214,8 @@ local function getActionButton(buttonId)
 	local button, parent;
 	button = tremove(actionButtonObjectPool);
 	if (not button) then
-		button = CreateFrame("CheckButton", "CT_BarModActionButton" .. buttonId, nil, "SecureActionButtonTemplate,SecureHandlerBaseTemplate");
+--		button = CreateFrame("CheckButton", "CT_BarModActionButton" .. buttonId, nil, "SecureActionButtonTemplate,SecureHandlerBaseTemplate");
+		button = CreateFrame("CheckButton", "CT_BarModActionButton" .. buttonId, nil, "ActionBarButtonTemplate,SecureHandlerBaseTemplate");
 		button:SetHeight(36);
 		button:SetWidth(36);
 		button:SetPoint("TOPLEFT", 0, 0);
@@ -689,6 +690,7 @@ setmetatable(actionButtonList, { __index =
 --------------------------------------------
 -- Event Handlers
 
+--[[
 module:regEvent("ACTIONBAR_SLOT_CHANGED", function(event, actionId)
 	if (actionId == 0) then
 		actionButtonList:update();
@@ -702,7 +704,7 @@ module:regEvent("ACTIONBAR_SLOT_CHANGED", function(event, actionId)
 		end
 	end
 end);
-
+--]]
 
 
 module:regEvent("SPELL_UPDATE_ICON", function()
@@ -713,16 +715,16 @@ end);
 -- Mode Handler
 
 function module:setMode(newMode)
-	if ( currentMode ~= newMode ) then
-		if ( currentMode ) then
-			module[currentMode.."Disable"](module);
-		end
-		newButtonMeta = module[newMode.."ButtonMeta"];
-		currentButtonClass = module[newMode.."ButtonClass"];
-		actionButtonList:setMode(newMode);
-		currentMode = newMode;
-		module[newMode.."Enable"](module);
-	end
+       if ( currentMode ~= newMode ) then
+               if ( currentMode ) then
+                       module[currentMode.."Disable"](module);
+               end
+               newButtonMeta = module[newMode.."ButtonMeta"];
+               currentButtonClass = module[newMode.."ButtonClass"];
+               actionButtonList:setMode(newMode);
+               currentMode = newMode;
+               module[newMode.."Enable"](module);
+       end
 end
 
 --------------------------------------------
